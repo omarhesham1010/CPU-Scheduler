@@ -30,6 +30,11 @@ namespace CPU_Scheduler
         private RadioButton nonPreemptiveRadio;
         private GroupBox groupBoxInput;
         private GroupBox groupBoxResult;
+        private GroupBox groupAnalysis;
+        private GroupBox groupAnalysis1;
+        private GroupBox groupAnalysis2;
+        private GroupBox groupAnalysis3;
+        private Panel simulationPanel;
         private Timer tt = new Timer();
         private int CurrentTime = 0;
 
@@ -89,6 +94,50 @@ namespace CPU_Scheduler
                 Width = this.ClientSize.Width / 2,
                 Height = 260,
                 Location = new Point(10, 10)
+            };
+
+            groupAnalysis = new GroupBox
+            {
+                Text = "Analysis",
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                ForeColor = Color.Black,
+                BackColor = Color.Gainsboro,
+                Width = this.ClientSize.Width - 20,
+                Height = 320,
+                Location = new Point(10, groupBoxInput.Location.Y + 10)
+            };
+
+            groupAnalysis1 = new GroupBox
+            {
+                Text = "Simulation",
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                ForeColor = Color.Black,
+                BackColor = Color.WhiteSmoke,
+                Width = (this.ClientSize.Width - 20) / 3 - 40,
+                Height = 275,
+                Location = new Point(10, groupBoxInput.Location.Y + 10)
+            };
+
+            groupAnalysis2 = new GroupBox
+            {
+                Text = "Pie Chart",
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                ForeColor = Color.Black,
+                BackColor = Color.WhiteSmoke,
+                Width = (this.ClientSize.Width - 20) / 3 - 40,
+                Height = 275,
+                Location = new Point(20 + (this.ClientSize.Width - 20) / 3 - 40, groupBoxInput.Location.Y + 10)
+            };
+
+            groupAnalysis3 = new GroupBox
+            {
+                Text = "Histogram for All Avg Waiting Time Algorithms",
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                ForeColor = Color.Black,
+                BackColor = Color.WhiteSmoke,
+                Width = (this.ClientSize.Width - 20) / 3 - 40,
+                Height = 275,
+                Location = new Point(30 + ((this.ClientSize.Width - 20) / 3 - 40) * 2, groupBoxInput.Location.Y + 10)
             };
 
             algorithmComboBox = new ComboBox
@@ -189,6 +238,7 @@ namespace CPU_Scheduler
 
             this.Controls.Add(groupBoxInput);
             this.Controls.Add(groupBoxResult);
+            this.Controls.Add(groupAnalysis);
             
             groupBoxInput.Controls.Add(preemptiveRadio);
             groupBoxInput.Controls.Add(nonPreemptiveRadio);
@@ -205,6 +255,10 @@ namespace CPU_Scheduler
             groupBoxResult.Controls.Add(avgTurnaroundLabel);
             groupBoxResult.Controls.Add(bestAlgorithmLabel);
             groupBoxResult.Controls.Add(avgBestAlgorithmLabel);
+
+            groupAnalysis.Controls.Add(groupAnalysis1);
+            groupAnalysis.Controls.Add(groupAnalysis2);
+            groupAnalysis.Controls.Add(groupAnalysis3);
             
             this.Controls.Add(drawPanel);
             drawPanel.SendToBack();
@@ -226,6 +280,12 @@ namespace CPU_Scheduler
             groupBoxInput.Width = this.ClientSize.Width / 2 - 20;
             groupBoxResult.Width = this.ClientSize.Width / 2 - 20;
             groupBoxResult.Location = new Point(10 + this.ClientSize.Width / 2, 10);
+            groupAnalysis.Width = this.ClientSize.Width - 20;
+            groupAnalysis.Location = new Point(10, groupBoxInput.Bottom + 10);
+            groupAnalysis1.Width = groupAnalysis2.Width = groupAnalysis3.Width = (this.ClientSize.Width - 60) / 3;
+            groupAnalysis1.Location = new Point(10, 30);
+            groupAnalysis2.Location = new Point(20 + groupAnalysis2.Width, 30);
+            groupAnalysis3.Location = new Point(30 + groupAnalysis2.Width + groupAnalysis3.Width, 30);
             int margin = 10;
             int gridHeight = 150;
 
@@ -337,7 +397,7 @@ namespace CPU_Scheduler
                 int boxWidth = (int)(p.BurstTime * unitWidth);
                 if (startX + boxWidth > this.ClientSize.Width)
                 {
-                    boxWidth = this.ClientSize.Width - startX - 20;
+                    boxWidth = this.ClientSize.Width - startX - margin;
                 }
                 Rectangle box = new Rectangle(startX, barTop, boxWidth, barHeight);
                 using (var brush = GetBrushForProcess(p.Name))
@@ -374,7 +434,6 @@ namespace CPU_Scheduler
                     int arrival = int.Parse(row.Cells["ArrivalTime"].Value?.ToString() ?? "0");
                     int burst = int.Parse(row.Cells["BurstTime"].Value?.ToString() ?? "0");
                     int priority = 0;
-
                     if (selectedAlgorithm == "Priority Scheduling")
                         priority = int.Parse(row.Cells["Priority"].Value?.ToString() ?? "0");
 
