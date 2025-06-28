@@ -37,7 +37,8 @@ namespace CPU_Scheduler
         private Panel simulationPanel;
         private Timer tt = new Timer();
         private int CurrentTime = 0;
-
+        private List<Panel> animatedProcesses = new List<Panel>();
+        private int MaxSimulationProgress;
 
         public Form1()
         {
@@ -72,6 +73,7 @@ namespace CPU_Scheduler
 
         private void InitControls()
         {
+            MaxSimulationProgress = (this.ClientSize.Width - 20) / 3 - 160;
             drawPanel = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
             drawPanel.Paint += DrawPanel_Paint;
             groupBoxInput = new GroupBox
@@ -236,6 +238,17 @@ namespace CPU_Scheduler
                 Checked = true
             };
 
+            simulationPanel = new Panel
+            {
+                Name = "simulationPanel",
+                AutoScroll = true,             // ✅ ده هو السر
+                Width = (this.ClientSize.Width - 60) / 3,
+                Height = 255,
+                Location = new Point(0, 20),
+                BorderStyle = BorderStyle.FixedSingle,
+                BackColor = Color.WhiteSmoke
+            };
+
             this.Controls.Add(groupBoxInput);
             this.Controls.Add(groupBoxResult);
             this.Controls.Add(groupAnalysis);
@@ -257,6 +270,7 @@ namespace CPU_Scheduler
             groupBoxResult.Controls.Add(avgBestAlgorithmLabel);
 
             groupAnalysis.Controls.Add(groupAnalysis1);
+            groupAnalysis1.Controls.Add(simulationPanel);
             groupAnalysis.Controls.Add(groupAnalysis2);
             groupAnalysis.Controls.Add(groupAnalysis3);
             
@@ -277,6 +291,7 @@ namespace CPU_Scheduler
 
         private void RepositionLayout()
         {
+            MaxSimulationProgress = (this.ClientSize.Width - 20) / 3 - 160;
             groupBoxInput.Width = this.ClientSize.Width / 2 - 20;
             groupBoxResult.Width = this.ClientSize.Width / 2 - 20;
             groupBoxResult.Location = new Point(10 + this.ClientSize.Width / 2, 10);
@@ -286,6 +301,7 @@ namespace CPU_Scheduler
             groupAnalysis1.Location = new Point(10, 30);
             groupAnalysis2.Location = new Point(20 + groupAnalysis2.Width, 30);
             groupAnalysis3.Location = new Point(30 + groupAnalysis2.Width + groupAnalysis3.Width, 30);
+            simulationPanel.Width = (this.ClientSize.Width - 60) / 3;
             int margin = 10;
             int gridHeight = 150;
 
@@ -361,10 +377,12 @@ namespace CPU_Scheduler
             avgBestAlgorithmLabel.Top = avgWaitingLabel.Bottom + 10;
         }
 
-        private Brush GetBrushForProcess(string name)
+        private Brush GetBrushForProcess(Process p)
         {
+            string name = p.Name;
             int hash = Math.Abs(name.GetHashCode());
             Color[] palette = new Color[] { Color.Brown, Color.DarkRed, Color.Green, Color.OrangeRed, Color.Blue, Color.OrangeRed, Color.DeepPink };
+            p.color = palette[hash % palette.Length];
             return new SolidBrush(palette[hash % palette.Length]);
         }
 
@@ -391,7 +409,6 @@ namespace CPU_Scheduler
             int startX = margin;
             int availableWidth = panelWidth - 2 * margin;
             float unitWidth = (float)availableWidth / totalTime;
-
             foreach (var p in result)
             {
                 int boxWidth = (int)(p.BurstTime * unitWidth);
@@ -400,7 +417,7 @@ namespace CPU_Scheduler
                     boxWidth = this.ClientSize.Width - startX - margin;
                 }
                 Rectangle box = new Rectangle(startX, barTop, boxWidth, barHeight);
-                using (var brush = GetBrushForProcess(p.Name))
+                using (var brush = GetBrushForProcess(p))
                 {
                     g.FillRectangle(brush, box);
                 }
@@ -408,7 +425,41 @@ namespace CPU_Scheduler
                 g.DrawString(p.Name, this.Font, Brushes.White, box.X + boxWidth / 2, box.Y + 5);
                 startX += boxWidth;
                 if (startX >= (float)availableWidth)
+                {
+                    foreach(var a in animatedProcesses)
+                    {
+                        if (p.Name == a.Name && !p.Drawn)
+                        {
+                            int tot = 0;
+                            foreach(var s in result)
+                            {
+                                if(s.Name == a.Name)
+                                {
+                                    tot += s.BurstTime;
+                                }
+                            }
+                            a.Width += (MaxSimulationProgress / tot);
+                            if (a.Width >= MaxSimulationProgress)
+                            {
+                                p.Drawn = true;
+                                a.Width = MaxSimulationProgress;
+                            }
+                            break;
+                        }
+                    }
                     break;
+                }
+                foreach (var a in animatedProcesses)
+                {
+                    if (p.Name == a.Name && !p.Drawn)
+                    {
+                        if (a.Width >= MaxSimulationProgress)
+                        {
+                            p.Drawn = true;
+                            a.Width = MaxSimulationProgress;
+                        }
+                    }
+                }
             }
             startX = margin;
             for (int i = 0; i <= totalTime; i++)
@@ -424,6 +475,7 @@ namespace CPU_Scheduler
             if (string.IsNullOrWhiteSpace(selectedAlgorithm)) return;
 
             List<Models.Process> processes = new List<Models.Process>();
+
             try
             {
                 foreach (DataGridViewRow row in processGrid.Rows)
@@ -446,6 +498,23 @@ namespace CPU_Scheduler
                 return;
             }
 
+            // Detect duplicate names
+            var duplicateNames = processes
+                .GroupBy(p => p.Name)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (duplicateNames.Count > 0)
+            {
+                MessageBox.Show(
+                    "Duplicate process names found:\n" + string.Join(", ", duplicateNames),
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+                return; // ❌ أوقف تنفيذ الحساب
+            }
             // Run selected algorithm
             switch (selectedAlgorithm)
             {
@@ -499,6 +568,40 @@ namespace CPU_Scheduler
             avgTurnaroundLabel.Text = $"Average Turnaround Time: {(totalTurnaround / finalSummary.Count):0.00}";
             bestAlgorithmLabel.Text = $"Best Algorithm: {SchedulingAlgorithms.BestAlgorithm(finalSummary)}";
             avgBestAlgorithmLabel.Text = $"Average Waiting Best Algorithm: {SchedulingAlgorithms.BestAlgorithmAvgWaiting(finalSummary)}";
+
+            simulationPanel.Controls.Clear();
+
+
+            int y = 10;
+            animatedProcesses.Clear();
+            foreach (var p in finalSummary)
+            {
+                var brush = GetBrushForProcess(p);
+                // Label
+                Label lbl = new Label
+                {
+                    Text = p.Name + ":",
+                    Font = new Font("Segoe UI", 10),
+                    Location = new Point(35, y + 5),
+                    AutoSize = true
+                };
+
+                // ProgressBar
+                Panel bar = new Panel
+                {
+                    Name = p.Name,
+                    Width = 0,
+                    Height = 20,
+                    Location = new Point(95, y + 6),
+                    BackColor = p.color
+                };
+
+                animatedProcesses.Add(bar);
+                simulationPanel.Controls.Add(lbl);
+                simulationPanel.Controls.Add(bar);
+
+                y += 35;
+            }
         }
 
         public static List<Process> GetSummaryResult(List<Process> processes)
@@ -510,6 +613,7 @@ namespace CPU_Scheduler
                 newP.FinishTime = p.FinishTime;
                 newP.WaitingTime = p.WaitingTime;
                 newP.TurnaroundTime = p.TurnaroundTime;
+                newP.color = p.color;
                 return newP;
             }).ToList();
         }

@@ -1,4 +1,7 @@
-﻿namespace CPU_Scheduler.Models
+﻿using System.Windows.Forms;
+using System.Drawing;
+
+namespace CPU_Scheduler.Models
 {
     public class Process
     {
@@ -12,6 +15,8 @@
         public int TurnaroundTime { get; set; }
         public int StartTime { get; set; }
         public int FinishTime { get; set; }
+        public Color color { get; set; }
+        public bool Drawn = false;
 
         public Process(string name, int arrivalTime, int burstTime, int priority = 0)
         {
@@ -20,6 +25,7 @@
             BurstTime = burstTime;
             Priority = priority;
         }
+
     }
 }
  
