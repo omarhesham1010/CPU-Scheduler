@@ -35,10 +35,12 @@ namespace CPU_Scheduler
         private GroupBox groupAnalysis2;
         private GroupBox groupAnalysis3;
         private Panel simulationPanel;
+        private Panel piePanel;
         private Timer tt = new Timer();
         private int CurrentTime = 0;
         private List<Panel> animatedProcesses = new List<Panel>();
         private int MaxSimulationProgress;
+        private List<Models.Process> lastSummary;
 
         public Form1()
         {
@@ -48,6 +50,7 @@ namespace CPU_Scheduler
             this.Resize += (_, __) => {
                 RepositionLayout();
                 drawPanel.Invalidate();
+                piePanel.Invalidate();
             };
             tt.Tick += Tt_Tick;
         }
@@ -56,6 +59,7 @@ namespace CPU_Scheduler
         {
             CurrentTime++;
             drawPanel.Invalidate();
+            piePanel.Invalidate();
             int totalTime = result.Sum(p => p.BurstTime);
             if (totalTime <= CurrentTime)
             {
@@ -249,6 +253,31 @@ namespace CPU_Scheduler
                 BackColor = Color.WhiteSmoke
             };
 
+            piePanel = new Panel
+            {
+                Name = "piePanel",
+                Width = groupAnalysis2.Width,
+                Height = groupAnalysis2.Height - 20,
+                Location = new Point(0, 20),
+                BackColor = Color.WhiteSmoke,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            piePanel.Paint += (s, e) =>
+            {
+                Graphics g = e.Graphics;
+                if (piePanel.Width >= piePanel.Height)
+                {
+                    int x = (piePanel.Width - piePanel.Height) / 2;
+                    Rectangle pieArea = new Rectangle(x, 10, piePanel.Height - 20, piePanel.Height - 20);
+                    DrawPieChart(g, pieArea, lastSummary);
+                }
+                else
+                {
+                    Rectangle pieArea = new Rectangle(10, 10, piePanel.Width - 20, piePanel.Width - 20);
+                    DrawPieChart(g, pieArea, lastSummary);
+                }
+            };
+
             this.Controls.Add(groupBoxInput);
             this.Controls.Add(groupBoxResult);
             this.Controls.Add(groupAnalysis);
@@ -272,6 +301,7 @@ namespace CPU_Scheduler
             groupAnalysis.Controls.Add(groupAnalysis1);
             groupAnalysis1.Controls.Add(simulationPanel);
             groupAnalysis.Controls.Add(groupAnalysis2);
+            groupAnalysis2.Controls.Add(piePanel);
             groupAnalysis.Controls.Add(groupAnalysis3);
             
             this.Controls.Add(drawPanel);
@@ -302,6 +332,7 @@ namespace CPU_Scheduler
             groupAnalysis2.Location = new Point(20 + groupAnalysis2.Width, 30);
             groupAnalysis3.Location = new Point(30 + groupAnalysis2.Width + groupAnalysis3.Width, 30);
             simulationPanel.Width = (this.ClientSize.Width - 60) / 3;
+            piePanel.Width = groupAnalysis2.Width;
             int margin = 10;
             int gridHeight = 150;
 
@@ -469,6 +500,48 @@ namespace CPU_Scheduler
             }
         }
 
+        void DrawPieChart(Graphics g, Rectangle area, List<Models.Process> processes)
+        {
+            if (processes == null || processes.Count == 0) return;
+
+            float total = processes.Sum(p => p.BurstTime);
+            float startAngle = 0;
+
+            Random rand = new Random();
+            Font labelFont = new Font("Segoe UI", 9);
+            Brush textBrush = Brushes.Black;
+
+            int legendY = 10;
+            foreach (var p in result)
+            {
+                float sweepAngle = 0;
+                if(CurrentTime != 0)
+                    sweepAngle = (((float)p.BurstTime * 360f) / (float)CurrentTime) / (float)p.BurstTime;
+                else
+                    sweepAngle = (((float)p.BurstTime * 360f) / total) / (float)p.BurstTime;
+
+                float endAngle = startAngle + sweepAngle * p.BurstTime;
+                if(sweepAngle != 0)
+                {
+                    for (float i = startAngle; i < endAngle && i < 360; i += sweepAngle)
+                    {
+                        using (Brush b = new SolidBrush(p.color))
+                        {
+                            g.FillPie(b, area, startAngle, sweepAngle);
+                        }
+                        startAngle += sweepAngle;
+                    }
+                }
+
+                // Draw legend
+                g.FillRectangle(new SolidBrush(p.color), area.Right + 10, legendY, 15, 15);
+                g.DrawString($"{p.Name} ({(p.BurstTime / total * 100):0.#}%)", labelFont, textBrush, area.Right + 30, legendY);
+
+                legendY += 20;
+            }
+        }
+
+
         private void CalculateButton_Click(object sender, EventArgs e)
         {
             string selectedAlgorithm = algorithmComboBox.SelectedItem?.ToString();
@@ -602,6 +675,7 @@ namespace CPU_Scheduler
 
                 y += 35;
             }
+            lastSummary = finalSummary;
         }
 
         public static List<Process> GetSummaryResult(List<Process> processes)
