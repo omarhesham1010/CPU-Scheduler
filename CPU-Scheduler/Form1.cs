@@ -36,11 +36,13 @@ namespace CPU_Scheduler
         private GroupBox groupAnalysis3;
         private Panel simulationPanel;
         private Panel piePanel;
+        private Panel histogramPanel;
         private Timer tt = new Timer();
         private int CurrentTime = 0;
         private List<Panel> animatedProcesses = new List<Panel>();
         private int MaxSimulationProgress;
         private List<Models.Process> lastSummary;
+        private Dictionary<string, double> avgWaitingTimes = new Dictionary<string, double>();
 
         public Form1()
         {
@@ -245,7 +247,7 @@ namespace CPU_Scheduler
             simulationPanel = new Panel
             {
                 Name = "simulationPanel",
-                AutoScroll = true,             // ✅ ده هو السر
+                AutoScroll = true,
                 Width = (this.ClientSize.Width - 60) / 3,
                 Height = 255,
                 Location = new Point(0, 20),
@@ -278,6 +280,225 @@ namespace CPU_Scheduler
                 }
             };
 
+            histogramPanel = new Panel
+            {
+                Name = "histogramPanel",
+                Width = groupAnalysis2.Width,
+                Height = groupAnalysis2.Height - 20,
+                Location = new Point(0, 20),
+                BackColor = Color.WhiteSmoke,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            histogramPanel.Paint += (s, e) =>
+            {
+                Graphics g = e.Graphics;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+                Font labelFont = new Font("Segoe UI", 8);
+                Brush textBrush = Brushes.Black;
+                Brush barBrush = Brushes.SteelBlue;
+
+                int barWidth = 35;
+                int spacing = 35;
+                int chartHeight = histogramPanel.Height - (spacing * 2 + 10);
+                int startX = (histogramPanel.Width - (barWidth * 5 + spacing * 6)) / 2; ;
+                int baseY = chartHeight + spacing;
+
+
+                avgWaitingTimes.Clear();
+
+                List<Process> Clone(List<Process> input) =>
+                    input.Select(p => new Process(p.Name, p.ArrivalTime, p.BurstTime, p.Priority)).ToList();
+
+                try
+                {
+                    List<Models.Process> processes = new List<Models.Process>();
+                    processes.Clear();
+                    string selectedAlgorithm = "FCFS";
+                    try
+                    {
+                        foreach (DataGridViewRow row in processGrid.Rows)
+                        {
+                            if (row.IsNewRow) continue;
+
+                            string id = row.Cells["ProcessID"].Value?.ToString();
+                            int arrival = int.Parse(row.Cells["ArrivalTime"].Value?.ToString() ?? "0");
+                            int burst = int.Parse(row.Cells["BurstTime"].Value?.ToString() ?? "0");
+                            int priority = 0;
+                            if (selectedAlgorithm == "Priority Scheduling")
+                                priority = int.Parse(row.Cells["Priority"].Value?.ToString() ?? "0");
+                            processes.Add(new Models.Process(id, arrival, burst, priority));
+                        }
+                    }
+                    catch
+                    {
+                        return;
+                    }
+                    var resultFCFS = SchedulingAlgorithms.FCFS(processes);
+                    avgWaitingTimes.Add("   FCFS", resultFCFS.Average(p => p.WaitingTime));
+                    processes.Clear();
+                    selectedAlgorithm = "SJF";
+                    try
+                    {
+                        foreach (DataGridViewRow row in processGrid.Rows)
+                        {
+                            if (row.IsNewRow) continue;
+
+                            string id = row.Cells["ProcessID"].Value?.ToString();
+                            int arrival = int.Parse(row.Cells["ArrivalTime"].Value?.ToString() ?? "0");
+                            int burst = int.Parse(row.Cells["BurstTime"].Value?.ToString() ?? "0");
+                            int priority = 0;
+                            if (selectedAlgorithm == "Priority Scheduling")
+                                priority = int.Parse(row.Cells["Priority"].Value?.ToString() ?? "0");
+                            processes.Add(new Models.Process(id, arrival, burst, priority));
+                        }
+                    }
+                    catch
+                    {
+                        return;
+                    }
+                    var resultSJF = SchedulingAlgorithms.SJF(processes);
+                    avgWaitingTimes.Add("    SJF", resultSJF.Average(p => p.WaitingTime));
+                    processes.Clear();
+                    selectedAlgorithm = "SJF Preemptive";
+                    try
+                    {
+                        foreach (DataGridViewRow row in processGrid.Rows)
+                        {
+                            if (row.IsNewRow) continue;
+
+                            string id = row.Cells["ProcessID"].Value?.ToString();
+                            int arrival = int.Parse(row.Cells["ArrivalTime"].Value?.ToString() ?? "0");
+                            int burst = int.Parse(row.Cells["BurstTime"].Value?.ToString() ?? "0");
+                            int priority = 0;
+                            if (selectedAlgorithm == "Priority Scheduling")
+                                priority = int.Parse(row.Cells["Priority"].Value?.ToString() ?? "0");
+                            processes.Add(new Models.Process(id, arrival, burst, priority));
+                        }
+                    }
+                    catch
+                    {
+                        return;
+                    }
+                    var resultSJFPreemptive = SchedulingAlgorithms.SJFPreemptive(processes);
+                    var finalSummarySJFPreemptive = GetSummaryResult(processes);
+                    float totalWaitingSJFPreemptive = 0;
+                    foreach (var p in finalSummarySJFPreemptive)
+                    {
+                        totalWaitingSJFPreemptive += p.WaitingTime;
+                    }
+                    avgWaitingTimes.Add("    SJF\nPreemptive", totalWaitingSJFPreemptive / (float)finalSummarySJFPreemptive.Count);
+                    processes.Clear();
+                    selectedAlgorithm = "Priority";
+                    try
+                    {
+                        foreach (DataGridViewRow row in processGrid.Rows)
+                        {
+                            if (row.IsNewRow) continue;
+
+                            string id = row.Cells["ProcessID"].Value?.ToString();
+                            int arrival = int.Parse(row.Cells["ArrivalTime"].Value?.ToString() ?? "0");
+                            int burst = int.Parse(row.Cells["BurstTime"].Value?.ToString() ?? "0");
+                            int priority = 0;
+                            if (selectedAlgorithm == "Priority Scheduling")
+                                priority = int.Parse(row.Cells["Priority"].Value?.ToString() ?? "0");
+                            processes.Add(new Models.Process(id, arrival, burst, priority));
+                        }
+                    }
+                    catch
+                    {
+                        return;
+                    }
+                    var resultPriority = SchedulingAlgorithms.Priority(processes);
+                    avgWaitingTimes.Add("  Priority", resultPriority.Average(p => p.WaitingTime));
+                    processes.Clear();
+                    selectedAlgorithm = "Priority Preemptive";
+                    try
+                    {
+                        foreach (DataGridViewRow row in processGrid.Rows)
+                        {
+                            if (row.IsNewRow) continue;
+
+                            string id = row.Cells["ProcessID"].Value?.ToString();
+                            int arrival = int.Parse(row.Cells["ArrivalTime"].Value?.ToString() ?? "0");
+                            int burst = int.Parse(row.Cells["BurstTime"].Value?.ToString() ?? "0");
+                            int priority = 0;
+                            if (selectedAlgorithm == "Priority Scheduling")
+                                priority = int.Parse(row.Cells["Priority"].Value?.ToString() ?? "0");
+                            processes.Add(new Models.Process(id, arrival, burst, priority));
+                        }
+                    }
+                    catch
+                    {
+                        return;
+                    }
+                    var resultPriorityPreemptive = SchedulingAlgorithms.PriorityPreemptive(processes);
+                    var finalSummaryPriorityPreemptive = GetSummaryResult(processes);
+                    float totalWaitingPriorityPreemptive = 0;
+                    foreach (var p in finalSummaryPriorityPreemptive)
+                    {
+                        totalWaitingPriorityPreemptive += p.WaitingTime;
+                    }
+                    avgWaitingTimes.Add("  Priority\nPreemptive", totalWaitingPriorityPreemptive / (float)finalSummaryPriorityPreemptive.Count);
+                    processes.Clear();
+                    selectedAlgorithm = "Round Roubin";
+                    try
+                    {
+                        foreach (DataGridViewRow row in processGrid.Rows)
+                        {
+                            if (row.IsNewRow) continue;
+
+                            string id = row.Cells["ProcessID"].Value?.ToString();
+                            int arrival = int.Parse(row.Cells["ArrivalTime"].Value?.ToString() ?? "0");
+                            int burst = int.Parse(row.Cells["BurstTime"].Value?.ToString() ?? "0");
+                            int priority = 0;
+                            if (selectedAlgorithm == "Priority Scheduling")
+                                priority = int.Parse(row.Cells["Priority"].Value?.ToString() ?? "0");
+                            processes.Add(new Models.Process(id, arrival, burst, priority));
+                        }
+                    }
+                    catch
+                    {
+                        return;
+                    }
+                    var resultRoundRobin = SchedulingAlgorithms.RoundRobin(processes, 2);
+                    var finalSummaryRoundRobin = GetSummaryResult(processes);
+                    float totalWaitingRoundRobin = 0;
+                    foreach (var p in finalSummaryRoundRobin)
+                    {
+                        totalWaitingRoundRobin += p.WaitingTime;
+                    }
+                    avgWaitingTimes.Add("Round\nRoubin", totalWaitingRoundRobin / (float)finalSummaryRoundRobin.Count);
+                    double maxVal = avgWaitingTimes.Values.Max();
+
+                    int i = 0;
+                    foreach (var kvp in avgWaitingTimes)
+                    {
+                        double value = kvp.Value;
+                        int barHeight = (int)(value / maxVal * chartHeight);
+
+                        int x = startX + i * (barWidth + spacing);
+                        int y = baseY - barHeight;
+
+                        // Draw bar
+                        g.FillRectangle(barBrush, x, y, barWidth, barHeight);
+
+                        // Draw value above
+                        g.DrawString($" {value:0.00}", labelFont, textBrush, x, y - 20);
+
+                        // Draw label below
+                        g.DrawString(kvp.Key, labelFont, textBrush, x - 5, baseY + 5);
+
+                        i++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return;
+                }
+            };
+
+
             this.Controls.Add(groupBoxInput);
             this.Controls.Add(groupBoxResult);
             this.Controls.Add(groupAnalysis);
@@ -303,6 +524,7 @@ namespace CPU_Scheduler
             groupAnalysis.Controls.Add(groupAnalysis2);
             groupAnalysis2.Controls.Add(piePanel);
             groupAnalysis.Controls.Add(groupAnalysis3);
+            groupAnalysis3.Controls.Add(histogramPanel);
             
             this.Controls.Add(drawPanel);
             drawPanel.SendToBack();
@@ -333,6 +555,7 @@ namespace CPU_Scheduler
             groupAnalysis3.Location = new Point(30 + groupAnalysis2.Width + groupAnalysis3.Width, 30);
             simulationPanel.Width = (this.ClientSize.Width - 60) / 3;
             piePanel.Width = groupAnalysis2.Width;
+            histogramPanel.Width = groupAnalysis2.Width;
             int margin = 10;
             int gridHeight = 150;
 
@@ -576,7 +799,6 @@ namespace CPU_Scheduler
             }
         }
 
-
         private void CalculateButton_Click(object sender, EventArgs e)
         {
             string selectedAlgorithm = algorithmComboBox.SelectedItem?.ToString();
@@ -711,6 +933,7 @@ namespace CPU_Scheduler
                 y += 35;
             }
             lastSummary = finalSummary;
+            histogramPanel.Invalidate();
         }
 
         public static List<Process> GetSummaryResult(List<Process> processes)
