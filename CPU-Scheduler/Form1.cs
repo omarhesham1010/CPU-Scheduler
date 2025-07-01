@@ -512,18 +512,53 @@ namespace CPU_Scheduler
             Brush textBrush = Brushes.Black;
 
             int legendY = 10;
-            foreach (var p in result)
+            var finalSummary = GetSummaryResult(processes);
+            int i = 0;
+            int t = CurrentTime;
+            if(CurrentTime == 0)
             {
+                t = (int)total;
+            }
+            foreach (var p in finalSummary)
+            {
+                int tot = 0;
+                int tot2 = 0;
+                foreach (var a in result)
+                {
+                    for (int k = 0; k < a.BurstTime; k++)
+                    {
+                        tot2++;
+                    }
+                    tot2 -= (a.BurstTime - 1);
+                    if(p.Name == a.Name)
+                    {
+                        for (int k = 0; k < a.BurstTime; k++)
+                        {
+                            if (i < t && tot2 <= t)
+                            {
+                                i++;
+                                tot++;
+                            }
+                            if (tot2 >= t)
+                                break;
+                        }
+                        if (tot2 >= t)
+                            break;
+                    }
+                    tot2 += (a.BurstTime - 1);
+                    if (i >= t)
+                        break;
+                }
                 float sweepAngle = 0;
-                if(CurrentTime != 0)
-                    sweepAngle = (((float)p.BurstTime * 360f) / (float)CurrentTime) / (float)p.BurstTime;
+                if(t != 0)
+                    sweepAngle = (360f / (float)t);
                 else
-                    sweepAngle = (((float)p.BurstTime * 360f) / total) / (float)p.BurstTime;
+                    sweepAngle = (360f / total);
 
-                float endAngle = startAngle + sweepAngle * p.BurstTime;
+                float endAngle = startAngle + sweepAngle * tot;
                 if(sweepAngle != 0)
                 {
-                    for (float i = startAngle; i < endAngle && i < 360; i += sweepAngle)
+                    for (float j = startAngle; j < endAngle && j < 360; j += sweepAngle)
                     {
                         using (Brush b = new SolidBrush(p.color))
                         {

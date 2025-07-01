@@ -178,9 +178,11 @@ namespace CPU_Scheduler
                     currentTime += burst;
                     proc.BurstTime -= burst;
 
-                    while (waiting.Any() && waiting.First().ArrivalTime <= currentTime)
+                    int tot = currentTime;
+                    while (waiting.Any() && waiting.First().ArrivalTime <= tot)
                     {
                         queue.Enqueue(waiting.First());
+                        tot += waiting.First().BurstTime;
                         waiting.RemoveAt(0);
                     }
 
